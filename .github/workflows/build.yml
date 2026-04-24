@@ -20,7 +20,7 @@ jobs:
             name: linux-arm64
           - target: armv7-unknown-linux-musleabihf
             name: linux-armv7
-          - target: mips-unknown-linux-musl
+          - target: mips-unknown-linux-gnu
             name: linux-mips
           - target: mipsel-unknown-linux-gnu
             name: linux-mipsel
