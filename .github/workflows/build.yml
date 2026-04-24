@@ -20,10 +20,6 @@ jobs:
             name: linux-arm64
           - target: armv7-unknown-linux-musleabihf
             name: linux-armv7
-          - target: mips-unknown-linux-gnu
-            name: linux-mips
-          - target: mipsel-unknown-linux-gnu
-            name: linux-mipsel
           - target: riscv64gc-unknown-linux-gnu
             name: linux-riscv64
     runs-on: ubuntu-latest
