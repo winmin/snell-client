@@ -22,7 +22,7 @@ jobs:
             name: linux-armv7
           - target: mips-unknown-linux-musl
             name: linux-mips
-          - target: mipsel-unknown-linux-musl
+          - target: mipsel-unknown-linux-gnu
             name: linux-mipsel
           - target: riscv64gc-unknown-linux-gnu
             name: linux-riscv64
