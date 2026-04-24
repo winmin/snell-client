@@ -1,0 +1,120 @@
+name: Build Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          # Linux x86_64
+          - target: x86_64-unknown-linux-musl
+            os: ubuntu-latest
+            name: linux-amd64
+          # Linux aarch64
+          - target: aarch64-unknown-linux-musl
+            os: ubuntu-latest
+            name: linux-arm64
+          # Linux armv7 (Raspberry Pi etc)
+          - target: armv7-unknown-linux-musleabihf
+            os: ubuntu-latest
+            name: linux-armv7
+          # Linux MIPS (big-endian, OpenWrt etc)
+          - target: mips-unknown-linux-musl
+            os: ubuntu-latest
+            name: linux-mips
+          # Linux MIPS little-endian
+          - target: mipsel-unknown-linux-musl
+            os: ubuntu-latest
+            name: linux-mipsel
+          # Linux MIPS64 little-endian
+          - target: mips64el-unknown-linux-muslabi64
+            os: ubuntu-latest
+            name: linux-mips64el
+          # Linux RISC-V 64
+          - target: riscv64gc-unknown-linux-gnu
+            os: ubuntu-latest
+            name: linux-riscv64
+          # macOS x86_64
+          - target: x86_64-apple-darwin
+            os: macos-latest
+            name: macos-amd64
+          # macOS Apple Silicon
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            name: macos-arm64
+          # Windows x86_64
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            name: windows-amd64
+            ext: .exe
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install cross (Linux cross-compilation)
+        if: runner.os == 'Linux'
+        run: cargo install cross --git https://github.com/cross-rs/cross
+
+      - name: Build (Linux via cross)
+        if: runner.os == 'Linux'
+        run: cross build --release --target ${{ matrix.target }}
+
+      - name: Build (macOS/Windows native)
+        if: runner.os != 'Linux'
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Package
+        shell: bash
+        run: |
+          BIN="snell-client${{ matrix.ext }}"
+          ARCHIVE="snell-client-${{ matrix.name }}"
+          mkdir -p dist
+          cp "target/${{ matrix.target }}/release/${BIN}" "dist/${BIN}"
+          cd dist
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            7z a "../${ARCHIVE}.zip" "${BIN}"
+          else
+            chmod +x "${BIN}"
+            tar czf "../${ARCHIVE}.tar.gz" "${BIN}"
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: snell-client-${{ matrix.name }}
+          path: snell-client-*.*
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+
+      - name: Create checksums
+        run: sha256sum snell-client-*.* > checksums.txt
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            snell-client-*.*
+            checksums.txt
+          generate_release_notes: true
